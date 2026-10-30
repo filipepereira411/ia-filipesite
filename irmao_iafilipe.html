@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA Assistente Wikipédia (Sem API Key)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .chat-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response-box {
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 5px solid #007bff;
+            border-radius: 4px;
+            min-height: 50px;
+            line-height: 1.6;
+        }
+        .loader {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <h2>🤖 IA Assistente de Pesquisa</h2>
+    <p>Pergunta-me sobre qualquer tema que eu vou procurar diretamente na Wikipédia irmão!</p>
+    
+    <div class="input-area">
+        <input type="text" id="query" placeholder="Ex: Física Quântica, Portugal, Inteligência Artificial..." onkeypress="if(event.key === 'Enter') buscarNaWikipedia()">
+        <button onclick="buscarNaWikipedia()">Perguntar</button>
+    </div>
+
+    <div id="output" class="response-box">Aguardando a tua pergunta...</div>
+</div>
+
+<script>
+async function buscarNaWikipedia() {
+    const query = document.getElementById('query').value.trim();
+    const output = document.getElementById('output');
+    
+    if (!query) {
+        output.innerText = "Escreve alguma coisa primeiro, irmão!";
+        return;
+    }
+
+    output.innerHTML = '<span class="loader">A aceder à Wikipédia e a processar a informação... 🧠</span>';
+
+    // Formatamos o termo para o padrão de busca de URLs da Wikipédia
+    const termoFormatado = encodeURIComponent(query);
+    
+    // Endpoint aberto que devolve o HTML processado da página sem precisar de tokens/autenticação
+    const url = `https://wikipedia.org{termoFormatado}&format=json&origin=*&prop=text&section=0`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            output.innerText = `Não encontrei nada sobre "${query}". Tenta escrever com a ortografia exata.`;
+            return;
+        }
+
+        // Obtém o HTML puro retornado da secção introdução da Wikipédia
+        const htmlPuro = data.parse.text['*'];
+
+        // Criamos um elemento temporário para extrair apenas o texto limpo (Scraping local)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlPuro;
+
+        // Remove tabelas, referências e caixas de info que poluem o texto
+        const elementosParaRemover = tempDiv.querySelectorAll('.infobox, .metadata, .reference, .noprint, table');
+        elementosParaRemover.forEach(el => el.remove());
+
+        // Extrai os parágrafos de texto
+        const paragrafos = tempDiv.querySelectorAll('p');
+        let textoFinal = "";
+
+        for (let p of paragrafos) {
+            if (p.textContent.trim().length > 30) { 
+                textoFinal = p.textContent;
+                break; 
+            }
+        }
+
+        // Limpa resíduos de chavetas como [1], [2] vindos do scraping do texto
+        textoFinal = textoFinal.replace(/\[\d+\]/g, '');
+
+        if (textoFinal.trim()) {
+            // Resposta simulada estilo IA inteligente
+            output.innerHTML = `<strong>Resposta da IA:</strong> Com base no que analisei na Wikipédia, ${textoFinal.trim()}`;
+        } else {
+            output.innerText = "Encontrei a página, mas não consegui extrair um resumo limpo, irmão.";
+        }
+
+    } catch (error) {
+        console.error(error);
+        output.innerText = "Houve um erro ao tentar conectar à base de dados da Wikipédia. Tenta novamente.";
+    }
+}
+</script>
+
+</body>
+</html>
